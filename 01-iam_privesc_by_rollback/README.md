@@ -4,6 +4,7 @@
 
 Starting as a low-privileged IAM user named **Raynor**, enumerate IAM policies and discover a hidden policy version with full administrator access. Roll back to that version to escalate privileges to full AWS admin.
 
+![Raynor IAM User](raynor-user.png)
 ---
 
 ## 🏗️ Environment
@@ -43,7 +44,7 @@ aws iam list-policy-versions \
 
 **Finding:** 5 versions exist (v1–v5). v1 is the current default.
 
-📸 *Screenshot: list-policy-versions output showing all 5 versions*
+📸 ![Policy Versions](policy-versions.png)
 
 ---
 
@@ -67,7 +68,7 @@ aws iam get-policy-version \
 ```
 Full administrator access on all AWS resources.
 
-📸 *Screenshot: get-policy-version output showing v3 with Action: \* Resource: \**
+📸 ![v3 Full Admin Policy](v3-policy-admin.png)
 
 ---
 
@@ -81,7 +82,7 @@ aws iam set-default-policy-version \
   --profile raynor
 ```
 
-📸 *Screenshot: AWS Console → IAM → Policies → Policy versions showing v3 as Default*
+📸 ![v3 Set as Default](v3-set-default.png)
 
 ---
 
@@ -94,8 +95,7 @@ aws iam list-users --profile raynor
 
 **Finding:** Successfully enumerated all users in the account — privilege escalation confirmed.
 
-📸 *Screenshot: list-users output showing all account users*
-
+📸 ![List Users Confirmed Admin](list-users-admin.png)
 ---
 
 ## 🗺️ Attack Flow Diagram
